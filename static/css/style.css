@@ -1,0 +1,169 @@
+body {
+    font-family: 'Roboto', sans-serif;
+    /*background-color: #8B0000;*/ /*RED*/
+    /*background-color: #293b20;*/ /*GREEN*/
+    background-color: #195da2; /*BLUE*/
+    color: #fff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+}
+
+a {
+    text-decoration: none;
+    color: aquamarine;
+}
+
+#login {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+
+
+.caixaregister {
+    margin-top: 20px;
+    padding: 20px;
+    border-radius: 20px;
+    /*background-color: #22300b;*/  /*GREEN*/
+    /*background-color: #800000;*/ /*RED*/
+    background-color: #3b8cde; /*BLUE*/
+    width: 350px;
+    height: auto;
+}
+
+.caixaregister img {
+    margin-top: 10px;
+    border-radius: 20px;
+    width: 115px;
+}
+
+.caixaregister h1 {
+    margin: 20px 0;
+}
+
+.account-type select {
+    border-radius: 15px;
+    border: none;
+    width: 250px;
+    height: 40px;
+    padding-left: 15px;
+    background-color: #1e1c2e;
+    color: #b6b6b6;
+    margin-bottom: 15px;
+}
+
+.form-section {
+    display: none;
+}
+
+.name input,
+.user input,
+.cpf input,
+.cnpj input,
+.password input {
+    border-radius: 15px;
+    border: none;
+    width: 250px;
+    height:40px;
+    padding-left: 15px;
+    background-color: #1e1c2e;
+    color: #b6b6b6;
+    margin-top: 15px;
+}
+
+
+
+.submit input {
+    cursor: pointer;
+    width: 120px;
+    height: 40px;
+    border-radius: 20px;
+    border: none;
+    background-color: rgb(134, 243, 134);
+    color: #141414;
+    margin-top: 15px;
+}
+
+input::placeholder {
+    color: #b6b6b6;
+}
+
+.submit p {
+    margin: 20px 0;
+}
+
+.caixa {
+
+    margin-top: 10px;
+    border-radius: 20px;
+    /*background-color: #22300b;*/ /*GREEN*/
+    /*background-color: #800000;*/ /*RED*/
+    background-color: #3b8cde; /*BLUE*/
+    width: 350px;
+    height:550px;
+
+}
+.caixa img {
+    margin-top: 30px;
+    border-radius: 20px;
+    width: 115px;
+}
+
+.header {
+    width: 100%;
+    /*background-color: #22300b;*/  /*GREEN*/
+    /*background-color: #800000;*/    /*RED*/
+    background-color: #3b8cde; /*BLUE*/
+    padding: 20px 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    position: fixed; /* Fixa o cabeçalho no topo */
+    top: 0;
+    left: 0;
+    z-index: 1000;
+}
+
+.header .logo {
+    width: 150px;
+    border-radius: 20px;
+    height: auto;
+    margin-right: 10px;
+}
+
+.header h1 {
+    white-space: nowrap;
+    font-size: 50px;
+    margin: 0;
+}
+
+.client-info {
+    width: 100%;
+    max-width: 300px;
+    margin-top: 50px;
+    text-align: left;
+    position: absolute;
+    left: 30px;
+    top: 150px;
+}
+
+.client-info h2 {
+    white-space: nowrap;
+    font-size: 35px;
+    margin-bottom: 15px;
+}
+
+.client-info p {
+    white-space: nowrap;
+    font-size: 20px;
+    margin: 20px 0;
+}
+
+.client-info strong {
+    font-weight: bold;
+}

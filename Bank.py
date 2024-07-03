@@ -1,131 +1,209 @@
-from flask import Flask, jsonify
-import logging
+from flask import Flask, request, jsonify, send_from_directory, redirect, url_for, session, render_template
 from flask_cors import CORS
-from flask import *
-
+import threading
+import time
+from queue import Queue
+from Transaction import Transaction
+from accountTypes.FisicPerson import FisicPerson
+from accountTypes.SharadAccount import SharadAccount
+from accountTypes.JuridicPerson import JuridicPerson
+import os
 
 class Bank:
-    def __init__(self, bank_name, client_name, cpf, password, host, port):
 
+    def __init__(self, bank_name, host='0.0.0.0', flask_port=5001):
         self.bank_name = bank_name
-        self.balance = 0.0
-        self.client_name = client_name
-        self.cpf = cpf
-        self.password = password
+        self.account_number = 1
+        self.clients = []
+        self.other_banks = []  # Add other bank instances here
+        self.transaction_queue = Queue()
+
         self.host = host
-        self.port = port
-
-        self.banks = []
-
-
+        self.flask_port = flask_port
         self.app = Flask(__name__)
+        self.app.secret_key = 'supersecretkey'
         CORS(self.app)
+        self.setup_routes()
 
+        # Start the token ring processing thread
+        self.token = threading.Event()
+        self.token.set()  # Initially, this bank has the token
+        self.processing_thread = threading.Thread(target=self.process_transactions)
+        self.processing_thread.start()
 
-    @self.app.route('/create_account', methods=['POST'])
-    def create_account_route(self):
+    def setup_routes(self):
+        @self.app.route('/create_account', methods=['POST'])
+        def create_account_route():
+            account = request.form
 
-        data = request.get_json()
-        bank_name = data['bank_name']
-        client_name = data['client_name']
-        cpf = data['cpf']
-        password = data['password']
-        saldo_inicial = data.get('saldo_inicial', 0.0)
-        success = self.create_account(bank_name, client_name, cpf, password, saldo_inicial)
+            if self.checking_account(account):
+                account_type = account.get('account_type')
+                password = account.get('password')
+                confirm_password = account.get('confirm_password')
 
-        if success:
-            return jsonify({'status': 'account created'}), 201
-        else:
-            return jsonify({'status': 'account creation failed'}), 400
+                if password != confirm_password:
+                    return jsonify({"error": "Passwords do not match"}), 400
 
-    def create_account(self, bank_name, client_name, cpf, password, saldo_inicial=0.0):
-        try:
-            if cpf in self.contas:
-                logging.error("Conta já existe para este CPF!")
-                return False
+                if account_type == 'fisica':
+                    client = FisicPerson(self.account_number, account.get('client_name'), account.get('cpf'), account.get('username'),
+                                         account.get('password'))
+
+                elif account_type == 'juridica':
+                    client = JuridicPerson(self.account_number, account.get('client_name'), account.get('cnpj'), account.get('username'),
+                                           account.get('password'))
+
+                elif account_type == 'conjunta':
+                    client = SharadAccount(self.account_number, account.get('client_name1'), account.get('client_name2'),
+                                           account.get('cpf1'), account.get('cpf2'), account.get('username'), account.get('password'))
+
+                else:
+                    return jsonify({"error": "Invalid account type"}), 400
+
+                self.account_number += 1
+                self.clients.append(client.get_info())
+                print(self.clients)
+
+                return jsonify({"message": "Account created successfully"}), 201
             else:
-                self.contas[cpf] = {
-                    'saldo': saldo_inicial,
-                    'password': password,
-                    'client_name': client_name,
-                    'bank_name': bank_name,
-                    'extrato': []
-                }
-                logging.info(f"Conta criada com sucesso para CPF: {cpf}")
-                return True
-        except Exception as e:
-            logging.error(f"Não foi possível criar a conta: {e}")
+                return jsonify({"error": "Account already exists"}), 400
+
+        @self.app.route('/login', methods=['POST'])
+        def login():
+            data = request.json
+            account_type = data.get('account_type')
+            username = data.get('username')
+            password = data.get('password')
+
+            for client in self.clients:
+                if client['accountType'] == account_type and client['user'] == username and client[
+                    'password'] == password:
+                    session['logged_in'] = True
+                    session['client'] = client
+                    return jsonify({"success": True}), 200
+
+            return jsonify({"success": False, "message": "Invalid credentials"}), 401
+
+        @self.app.route('/templates/<path:filename>')
+        def login_page(filename):
+            return send_from_directory(os.path.join(self.app.root_path, 'templates'), filename)
+
+        @self.app.route('/home')
+        def home_page():
+            if 'logged_in' in session and session['logged_in']:
+                client = session['client']
+                print(client)
+                return render_template('home.html', bank_name=self.bank_name, client=client)
+            else:
+                return redirect(url_for('login_page', filename='login.html'))
+
+        @self.app.route('/transaction', methods=['POST'])
+        def transaction():
+            data = request.json
+            transaction = Transaction(
+                transaction_type=data['transaction_type'],
+                sender_bank=self,
+                receiver_bank=data.get('receiver_bank', self),
+                amount=data['amount'],
+                sender_account=data['sender_account'],
+                receiver_account=data.get('receiver_account')
+            )
+            self.transaction_queue.put(transaction)
+            return jsonify(success=True)
+
+    def checking_account(self, account):
+        account_type = account.get('account_type')
+
+        if account_type == 'fisica':
+            for client in self.clients:
+                if client["accountType"] == 'fisica':
+                    if account.get('cpf') == client["cpf"]:
+                        return False
+
+        elif account_type == 'juridica':
+            for client in self.clients:
+                if client["accountType"] == 'juridica':
+                    if account.get('cnpj') == client["cnpj"]:
+                        return False
+
+        elif account_type == 'conjunta':
+            for client in self.clients:
+                if client["accountType"] == 'conjunta':
+                    if account.get('cpf1') in client["cpf"] or account.get('cpf2') in client["cpf"]:
+                        return False
+        else:
             return False
 
-    @self.app.route('/deposit', methods=['POST'])
-    def deposit():
-        data = request.get_json()
-        cpf = data['cpf']
-        amount = data['amount']
-        conta = self.contas.get(cpf)
-        if conta:
-            with self.get_lock(cpf):
-                conta['saldo'] += amount
-                conta['extrato'].append({'tipo': 'depósito', 'quantia': amount})
-            return jsonify({'status': 'deposit successful'}), 200
-        else:
-            return jsonify({'error': 'account not found'}), 404
+        return True
 
-    @self.app.route('/withdraw', methods=['POST'])
-    def withdraw():
-        data = request.get_json()
-        cpf = data['cpf']
-        amount = data['amount']
-        conta = self.contas.get(cpf)
-        if conta:
-            with self.get_lock(cpf):
-                if conta['saldo'] >= amount:
-                    conta['saldo'] -= amount
-                    conta['extrato'].append({'tipo': 'saque', 'quantia': amount})
-                    return jsonify({'status': 'withdraw successful'}), 200
-                else:
-                    return jsonify({'error': 'insufficient funds'}), 400
-        else:
-            return jsonify({'error': 'account not found'}), 404
+    def process_transactions(self):
+        while True:
+            if self.token.is_set():
+                while not self.transaction_queue.empty():
+                    transaction = self.transaction_queue.get()
+                    self.handle_transaction(transaction)
+                self.token.clear()
+                self.pass_token_to_next_bank()
 
-    #def transfer
+    def handle_transaction(self, transaction):
+        if transaction.transaction_type == 'deposit':
+            self.deposit(transaction)
+        elif transaction.transaction_type == 'withdraw':
+            self.withdraw(transaction)
+        elif transaction.transaction_type == 'transfer':
+            self.transfer(transaction)
 
-    #def get_extract
+    def deposit(self, transaction):
+        for client in self.clients:
+            if client['accountNumber'] == transaction.receiver_account:
+                client['balance'] += transaction.amount
+                return True
+        return False
 
-    @self.app.route('/balance/<cpf>', methods=['GET'])
-    def get_balance(cpf):
-        conta = self.contas.get(cpf)
-        if conta:
-            return jsonify({'cpf': cpf, 'saldo': conta['saldo']})
-        else:
-            return jsonify({'error': 'account not found'}), 404
+    def withdraw(self, transaction):
+        for client in self.clients:
+            if client['accountNumber'] == transaction.sender_account and client['balance'] >= transaction.amount:
+                client['balance'] -= transaction.amount
+                return True
+        return False
 
+    def transfer(self, transaction):
+        total_balance = 0
+        involved_accounts = []
+        for client in self.clients:
+            if client['accountNumber'] == transaction.sender_account and client['balance'] >= transaction.amount:
+                involved_accounts.append(client)
+                total_balance += client['balance']
+                if total_balance >= transaction.amount:
+                    break
 
-    def get_allbanks(self):
+        if total_balance < transaction.amount:
+            return False
 
-        return self.banks
+        remaining_amount = transaction.amount
+        for account in involved_accounts:
+            if account['balance'] >= remaining_amount:
+                account['balance'] -= remaining_amount
+                remaining_amount = 0
+            else:
+                remaining_amount -= account['balance']
+                account['balance'] = 0
 
-    def get_bankname(self):
+        for client in self.clients:
+            if client['accountNumber'] == transaction.receiver_account:
+                client['balance'] += transaction.amount
+                return True
 
-        return self.bank_name
+        return False
 
-    def get_client_name(self):
+    def pass_token_to_next_bank(self):
+        if self.other_banks:
+            next_bank = self.other_banks.pop(0)
+            self.other_banks.append(next_bank)
+            next_bank.token.set()
 
-        return self.client_name
+def main():
+    banco = Bank('Green Bank')
+    banco.app.run(debug=True, port=5001)
 
-    def get_cpf(self):
-
-        return self.cpf
-
-    def set_bankname(self, bank_name):
-
-        self.bank_name = bank_name
-
-    def set_client_name(self, client_name):
-
-        self.client_name = client_name
-
-    def set_cpf(self, cpf):
-
-        self.cpf = cpf
-
+if __name__ == '__main__':
+    main()

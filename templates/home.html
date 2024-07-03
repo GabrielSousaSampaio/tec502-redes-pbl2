@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900&family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <title>Home</title>
+</head>
+<body>
+
+    <div class="header">
+         <img src="/static/img/logo2.png" alt="Logo" class="logo">
+        <h1>{{ bank_name }}</h1>
+    </div>
+     <div class="client-info">
+        <h2>Informações do Cliente</h2>
+        <p><strong>Tipo de Conta:</strong> {{ client.accountType }}</p>
+        <p><strong>Número da Conta:</strong> {{ client.accountNumber }}</p>
+
+        {% if client.accountType == 'fisica' %}
+            <p><strong>Nome:</strong> {{ client.name }}</p>
+            <p><strong>Username:</strong> {{ client.user }}</p>
+            <p><strong>CPF:</strong> {{ client.cpf }}</p>
+        {% elif client.accountType == 'juridica' %}
+            <p><strong>Nome da Empresa:</strong> {{ client.name }}</p>
+            <p><strong>Username:</strong> {{ client.user }}</p>
+            <p><strong>CNPJ:</strong> {{ client.cnpj }}</p>
+        {% elif client.accountType == 'conjunta' %}
+            <p><strong>Nome do Cliente 1:</strong> {{ client.name[0] }}</p>
+            <p><strong>CPF do Cliente 1:</strong> {{ client.cpf[0] }}</p>
+            <p><strong>Nome do Cliente 2:</strong> {{ client.name[1] }}</p>
+            <p><strong>CPF do Cliente 2:</strong> {{ client.cpf[1] }}</p>
+            <p><strong>Username:</strong> {{ client.user }}</p>
+        {% endif %}
+
+        <p><strong>Saldo:</strong> {{ client.balance }}</p>
+    </div>
+
+</body>
+</html>
